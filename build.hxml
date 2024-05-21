@@ -1,0 +1,8 @@
+-main Main
+-cp src
+
+-lib heaps
+-lib hlsdl
+
+-D windowSize=1000x600
+-hl main.hl

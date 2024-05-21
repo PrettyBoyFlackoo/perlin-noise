@@ -1,0 +1,68 @@
+function fade(t):
+    return t * t * t * (t * (t * 6 - 15) + 10)
+
+function lerp(t, a, b):
+    return a + t * (b - a)
+
+function grad(hash, x, y):
+    h = hash & 7
+    u = if h < 4 then x else y
+    v = if h < 4 then y else x
+    return (if h & 1 == 0 then u else -u) + (if h & 2 == 0 then v else -v)
+
+function perlin(x, y, perm):
+    xi = int(x) & 255
+    yi = int(y) & 255
+    xf = x - int(x)
+    yf = y - int(y)
+    
+    u = fade(xf)
+    v = fade(yf)
+    
+    aa = perm[perm[xi] + yi]
+    ab = perm[perm[xi] + yi + 1]
+    ba = perm[perm[xi + 1] + yi]
+    bb = perm[perm[xi + 1] + yi + 1]
+    
+    x1 = lerp(u, grad(aa, xf, yf), grad(ba, xf - 1, yf))
+    x2 = lerp(u, grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1))
+    
+    result = lerp(v, x1, x2)
+    
+    # Normalize result to 0-1 range
+    return (result + 1) / 2
+
+function octave_perlin(x, y, perm, octaves, persistence, lacunarity):
+    total = 0
+    frequency = 1
+    amplitude = 1
+    max_value = 0  # Used for normalization
+
+    for i from 0 to octaves - 1:
+        total += perlin(x * frequency, y * frequency, perm) * amplitude
+        max_value += amplitude
+        
+        amplitude *= persistence
+        frequency *= lacunarity
+    
+    return total / max_value
+
+# Example permutation list, should be randomly generated
+perm = generate_random_permutation_list(256)
+perm = perm + perm  # Concatenate the permutation list with itself
+
+# Parameters for Perlin Noise
+octaves = 4
+persistence = 0.5
+lacunarity = 2.0
+
+# Generate a 2D Perlin Noise grid
+size = 100
+noise = create_2d_array(size, size)
+
+for i from 0 to size - 1:
+    for j from 0 to size - 1:
+        noise[i][j] = octave_perlin(i * 0.1, j * 0.1, perm, octaves, persistence, lacunarity)
+
+# Display the noise (implementation specific)
+display_noise_image(noise)
