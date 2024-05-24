@@ -10,18 +10,25 @@ class Main extends hxd.App {
 
     var g:Graphics;
 
-    var noise:Array<Float> = [];
+    var noise2dMap:Array<Array<Float>> = [];
 
     var perlin:Perlin;
     var size:Int = 10; //100
     var octaves:Int = 4;
     var persistance:Float = .5;
     var lacunarity:Float = 2.0;
+    var frequency:Float = 1.0;
 
     //Gui
     var octavesSlider:Slider;
     var persistanceSlider:Slider;
     var lacunaritySlider:Slider;
+    var frequencySlider:Slider;
+
+    var octavesHeader:Text;
+    var persistanceHeader:Text;
+    var lacunarityHeader:Text;
+    var frequencyHeader:Text;
 
     static function main() {
         new Main();    
@@ -29,9 +36,10 @@ class Main extends hxd.App {
 
     override function init():Void {
         g = new Graphics(s2d);
+        perlin = new Perlin();
 
-        var octavesHeader = new Text(DefaultFont.get(), s2d);
-        octavesHeader.text = 'Octaves';
+        octavesHeader = new Text(DefaultFont.get(), s2d);
+        octavesHeader.text = 'Octaves: ' + octaves;
         octavesHeader.x += 32;
         octavesHeader.y += 16;
         octavesSlider = new Slider(100, 10, s2d);
@@ -47,8 +55,8 @@ class Main extends hxd.App {
             generate();
         }
 
-        var persistanceHeader = new Text(DefaultFont.get(), s2d);
-        persistanceHeader.text = 'Persistance';
+        persistanceHeader = new Text(DefaultFont.get(), s2d);
+        persistanceHeader.text = 'Persistance: ' + persistance;
         persistanceHeader.x += 32;
         persistanceHeader.y += 48;
         persistanceSlider = new Slider(100, 10, s2d);
@@ -58,13 +66,13 @@ class Main extends hxd.App {
         persistanceSlider.x += 32;
         persistanceSlider.y += 64;
         persistanceSlider.onChange = () -> {
-            persistance = persistanceSlider.value;
+            persistance = Math.round(persistanceSlider.value * 100) / 100;
 
             generate();
         }
 
-        var lacunarityHeader = new Text(DefaultFont.get(), s2d);
-        lacunarityHeader.text = 'Lacunarity';
+        lacunarityHeader = new Text(DefaultFont.get(), s2d);
+        lacunarityHeader.text = 'Lacunarity: ' + lacunarity;
         lacunarityHeader.x += 32;
         lacunarityHeader.y += 80;
         lacunaritySlider = new Slider(100, 10, s2d);
@@ -74,12 +82,38 @@ class Main extends hxd.App {
         lacunaritySlider.x += 32;
         lacunaritySlider.y += 96;
         lacunaritySlider.onChange = () -> {
-            lacunarity = lacunaritySlider.value;
+            lacunarity = Math.round(lacunaritySlider.value * 100) / 100;
 
             generate();
         }
 
-        perlin = new Perlin();
+        frequencyHeader = new Text(DefaultFont.get(), s2d);
+        frequencyHeader.text = 'Frequency: ' + frequency;
+        frequencyHeader.x += 32;
+        frequencyHeader.y += 112;
+        frequencySlider = new Slider(100, 10, s2d);
+        frequencySlider.minValue = .1;
+        frequencySlider.maxValue = 20;
+        frequencySlider.value = frequency;
+        frequencySlider.x += 32;
+        frequencySlider.y += 128;
+        frequencySlider.onChange = () -> {
+            var val = Math.round(frequencySlider.value * 100) / 100;
+
+            frequency = val;
+
+            for (i in 0...10) {
+                var j = i * 10; //10, 20, 30...
+
+                if (frequency % j == 0) {
+                    frequency -= 1;
+                }
+                
+            }
+
+            generate();
+        }
+
 
 
 
@@ -87,14 +121,18 @@ class Main extends hxd.App {
     }
 
     function generate() {
-        noise = [];
+        noise2dMap = [];
 
         for (i in 0...size) {
-            for (j in 0...size) {
-                var v = perlin.octavePerlin(i * .1, j * .1, octaves, persistance, lacunarity);
+            var row:Array<Float> = [];
 
-                noise.push(v);  
+            for (j in 0...size) {
+                var v = perlin.octavePerlin(i * .1, j * .1, octaves, persistance, lacunarity, frequency);
+
+                row.push(v);
             }
+
+            noise2dMap.push(row);
         }
 
         draw();
@@ -103,27 +141,77 @@ class Main extends hxd.App {
 
 
     function draw() {
+      
+        var drawMap = [];
+
+        //Convert 2d Array to 1D
+        for (y in 0...size) {
+            for (x in 0...size) {
+                var i = getIndexFrom2DArray(y, x, size);
+                var index = getPosFrom2DArray(i, size);
+
+                var value = noise2dMap[index.row][index.col];
+
+                drawMap.push(value);
+            }
+        }
+
+        ///Draw from 1D Array
         g.clear();
         g.lineStyle(1, 0xFFFFFF);
         g.beginFill(0xFFFFFF);
 
-        for (i in 0...noise.length) {
+
+        var drawPoints = false;
+
+
+        for (i in 0...drawMap.length) {
             var height = 100;
 
-            var from = noise[i] * height;
-            var to = noise[i + 1] * height;
+            var from = drawMap[i] * height;
+            var to = drawMap[i + 1] * height;
 
             var yOffset = s2d.height / 2;
-            var length = s2d.width / noise.length;
+            var length = s2d.width / drawMap.length;
 
-            //g.drawRect(length * i, yOffset - (noise[i] * height), 5, 5);
+            if (drawPoints) {
+                var blocksize = 5;
+                g.drawRect(-(blocksize / 2) + length * i, -(blocksize / 2) + yOffset - (drawMap[i] * height), blocksize, blocksize);
+            }
 
             g.moveTo(length * i, yOffset - from);
             g.lineTo(length * (i + 1), yOffset - to);
         }
+
+
+        //update text
+        octavesHeader.text = 'Octaves: ' + octaves;
+        persistanceHeader.text = 'Persistance: ' + persistance;
+        lacunarityHeader.text = 'Lacunarity: ' + lacunarity;
+        frequencyHeader.text = 'Frequency: ' + frequency;
+
     }
 
     override function update(dt:Float):Void {
 
+    }
+
+    /**
+		Returns Index number for 1D Array. Converts the `row` and `col` position
+		into a single index to get the same position by 1 Number Index!
+	**/
+	static function getIndexFrom2DArray(row:Int, col:Int, numCols:Int):Int {
+        return row * numCols + col;
+    }
+
+	/**
+		Returns position for 2D Array. Converts the index number into
+		a row and columns position to get the same position with 2 attributes
+	**/
+	static function getPosFrom2DArray(index:Int, numCols:Int):{row:Int, col:Int} {
+        var row = Std.int(index / numCols);
+        var col = Std.int(index % numCols);
+
+        return { row: row, col: col };
     }
 }

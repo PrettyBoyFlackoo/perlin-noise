@@ -47,9 +47,9 @@ class Perlin {
         return (result + 1) / 2;
     }
 
-    public function octavePerlin(x:Float, y:Float, octaves = 4, persistance = .5, lacunarity = 2.0) {
+    public function octavePerlin(x:Float, y:Float, octaves:Int = 4, persistance:Float = .5, lacunarity:Float = 2.0, base_frequency:Float = .5) {
         var total = .0;
-        var frequency = 1.0;
+        var frequency = base_frequency;
         var amplitude = 1.0;
         var maxValue = .0;
 

@@ -231,6 +231,13 @@ Der Code durchläuft mehrere Oktaven, berechnet für jede Oktave einen Perlin No
 
 Mit diesen Erweiterungen können Sie die Komplexität und Details Ihrer Perlin Noise Texturen steuern. Wenn Sie weitere Anpassungen oder Erklärungen benötigen, lassen Sie es mich wissen!
 
+
+
+
+
+
+###########Frequency######################
+
 how to change frequency of the noise map in runtime
 ChatGPT
 To change the frequency of the noise map at runtime, you can adjust the frequency parameter dynamically. This can be particularly useful in applications where you want to animate the noise or allow user interaction to modify the noise characteristics in real time.
