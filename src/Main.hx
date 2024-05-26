@@ -1,5 +1,8 @@
 package;
 
+import h2d.Tile;
+import h2d.Bitmap;
+import hxd.BitmapData;
 import hxd.res.DefaultFont;
 import h2d.Slider;
 import h2d.Text;
@@ -9,22 +12,30 @@ import h2d.Graphics;
 class Main extends hxd.App {
 
     var g:Graphics;
+    var drawMap:Array<Float> = [];
+    var bmp:Bitmap;
+    var bmpData:BitmapData;
+    var mapTile:Tile;
 
     var noise2dMap:Array<Array<Float>> = [];
 
     var perlin:Perlin;
-    var size:Int = 10; //100
+    var size:Int = 100; //100
+
+    var scale:Float = 1.0;
     var octaves:Int = 4;
     var persistance:Float = .5;
-    var lacunarity:Float = 2.0;
+    var lacunarity:Float = 1.0;
     var frequency:Float = 1.0;
 
     //Gui
+    var scaleSlider:Slider;
     var octavesSlider:Slider;
     var persistanceSlider:Slider;
     var lacunaritySlider:Slider;
     var frequencySlider:Slider;
 
+    var scaleHeader:Text;
     var octavesHeader:Text;
     var persistanceHeader:Text;
     var lacunarityHeader:Text;
@@ -36,7 +47,33 @@ class Main extends hxd.App {
 
     override function init():Void {
         g = new Graphics(s2d);
+        bmpData = new BitmapData(size, size);
+
+        var scaleFactor = 3.0;
+
+        bmp = new Bitmap(Tile.fromBitmap(bmpData), s2d);
+        bmp.x = s2d.width / 2 - (bmp.tile.width * scaleFactor) / 2;
+        bmp.y = s2d.height / 2 - (bmp.tile.height * scaleFactor) / 2;
+        bmp.scale(scaleFactor);
+
         perlin = new Perlin();
+
+        scaleHeader = new Text(DefaultFont.get(), s2d);
+        scaleHeader.text = 'Scale: ' + scale;
+        scaleHeader.x += 32;
+        scaleHeader.y += 142;
+        scaleSlider = new Slider(100, 10, s2d);
+        scaleSlider.minValue = .1;
+        scaleSlider.maxValue = 25;
+        scaleSlider.value = scale;
+        scaleSlider.x += 32;
+        scaleSlider.y += 158;
+        
+        scaleSlider.onChange = () -> {
+            scale = Math.round(scaleSlider.value * 100) / 100;
+
+            generate();
+        }
 
         octavesHeader = new Text(DefaultFont.get(), s2d);
         octavesHeader.text = 'Octaves: ' + octaves;
@@ -61,7 +98,7 @@ class Main extends hxd.App {
         persistanceHeader.y += 48;
         persistanceSlider = new Slider(100, 10, s2d);
         persistanceSlider.minValue = .1;
-        persistanceSlider.maxValue = 5;
+        persistanceSlider.maxValue = 1;
         persistanceSlider.value = persistance;
         persistanceSlider.x += 32;
         persistanceSlider.y += 64;
@@ -77,7 +114,7 @@ class Main extends hxd.App {
         lacunarityHeader.y += 80;
         lacunaritySlider = new Slider(100, 10, s2d);
         lacunaritySlider.minValue = .1;
-        lacunaritySlider.maxValue = 5;
+        lacunaritySlider.maxValue = 2;
         lacunaritySlider.value = lacunarity;
         lacunaritySlider.x += 32;
         lacunaritySlider.y += 96;
@@ -93,7 +130,7 @@ class Main extends hxd.App {
         frequencyHeader.y += 112;
         frequencySlider = new Slider(100, 10, s2d);
         frequencySlider.minValue = .1;
-        frequencySlider.maxValue = 20;
+        frequencySlider.maxValue = 1;
         frequencySlider.value = frequency;
         frequencySlider.x += 32;
         frequencySlider.y += 128;
@@ -127,7 +164,7 @@ class Main extends hxd.App {
             var row:Array<Float> = [];
 
             for (j in 0...size) {
-                var v = perlin.octavePerlin(i * .1, j * .1, octaves, persistance, lacunarity, frequency);
+                var v = perlin.octavePerlin(i * .1, j * .1, scale, octaves, persistance, lacunarity, frequency);
 
                 row.push(v);
             }
@@ -138,11 +175,31 @@ class Main extends hxd.App {
         draw();
     }
 
-
-
     function draw() {
       
-        var drawMap = [];
+        //draw1DNoise();
+        draw2DNoise();
+
+        //update text
+        octavesHeader.text = 'Octaves: ' + octaves;
+        persistanceHeader.text = 'Persistance: ' + persistance;
+        lacunarityHeader.text = 'Lacunarity: ' + lacunarity;
+        frequencyHeader.text = 'Frequency: ' + frequency;
+        scaleHeader.text = 'Scale: ' + scale;
+    }
+
+    override function update(dt:Float):Void {
+
+    }
+
+    function draw1DNoise():Void {
+        g.clear();
+        g.lineStyle(1, 0xFFFFFF);
+        g.beginFill(0xFFFFFF);
+
+        var drawPoints = false;
+
+        drawMap = [];
 
         //Convert 2d Array to 1D
         for (y in 0...size) {
@@ -155,15 +212,6 @@ class Main extends hxd.App {
                 drawMap.push(value);
             }
         }
-
-        ///Draw from 1D Array
-        g.clear();
-        g.lineStyle(1, 0xFFFFFF);
-        g.beginFill(0xFFFFFF);
-
-
-        var drawPoints = false;
-
 
         for (i in 0...drawMap.length) {
             var height = 100;
@@ -182,18 +230,37 @@ class Main extends hxd.App {
             g.moveTo(length * i, yOffset - from);
             g.lineTo(length * (i + 1), yOffset - to);
         }
-
-
-        //update text
-        octavesHeader.text = 'Octaves: ' + octaves;
-        persistanceHeader.text = 'Persistance: ' + persistance;
-        lacunarityHeader.text = 'Lacunarity: ' + lacunarity;
-        frequencyHeader.text = 'Frequency: ' + frequency;
-
     }
 
-    override function update(dt:Float):Void {
+    function draw2DNoise():Void {
+        drawMap = [];
 
+        //Convert 2d Array to 1D
+        for (y in 0...size) {
+            for (x in 0...size) {
+                var i = getIndexFrom2DArray(y, x, size);
+                var index = getPosFrom2DArray(i, size);
+
+                var value = noise2dMap[index.row][index.col];
+
+                drawMap.push(value);
+            }
+        }
+
+
+        //Draw 2D
+        for (y in 0...bmpData.height) {
+            for (x in 0...bmpData.width) {
+                var i = getIndexFrom2DArray(y, x, size);
+                var index = getPosFrom2DArray(i, size);
+
+                var value = noise2dMap[index.row][index.col];
+                
+                bmpData.setPixel(x, y,  fromRGBToHex(Math.round(value * 255), Math.round(value * 255), Math.round(value * 255)));
+            }
+        }
+
+        bmp.tile = Tile.fromBitmap(bmpData);
     }
 
     /**
@@ -213,5 +280,9 @@ class Main extends hxd.App {
         var col = Std.int(index % numCols);
 
         return { row: row, col: col };
+    }
+
+    inline function fromRGBToHex(r:Int, g:Int, b:Int, a:Int = 255):Int {
+        return ((a << 24) | (r << 16) | (g << 8) | b);
     }
 }
